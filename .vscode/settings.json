@@ -1,0 +1,18 @@
+{
+	"files.exclude": {
+		"**/.git": true,
+		"**/.svn": true,
+		"**/.hg": true,
+		"**/CVS": true,
+		"**/.DS_Store": true,
+		"**/Thumbs.db": true,
+		"nt-test-server/.gradle": true,
+		"nt-test-server/.idea": true,
+		"nt-test-server/gradle": true,
+		"nt-test-server/bin": true,
+		"nt-test-server/build": true,
+		"nt-test-server/gradlew": true,
+		"nt-test-server/gradlew.bat": true,
+		"nt-test-server/networktables.json.bck": true
+	}
+}
