@@ -1,0 +1,10 @@
+[
+  {
+    "name": "/datatable/test",
+    "type": "double",
+    "value": 10.0,
+    "properties": {
+      "persistent": true
+    }
+  }
+]
