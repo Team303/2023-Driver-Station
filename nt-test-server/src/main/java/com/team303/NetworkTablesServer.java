@@ -56,13 +56,6 @@ public class NetworkTablesServer {
                     System.out.println("interrupted");
                     return;
                 }
-                double x = xEntry.getDouble(0.0);
-                double y = yEntry.getDouble(0.0);
-                double test = testEntry.getDouble(0.0);
-                System.out.println("X: " + x + " Y: " + y + " Test: " + test);
-
-                boolean compressor = sdCompressorEntry.getBoolean(false);
-                System.out.println("Compressor: " + compressor);
             }
         }).start();
     }
