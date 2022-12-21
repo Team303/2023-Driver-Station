@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+    "nt-usb-client",
+    "nt-usb-proto",
+    "nt-usb-proxy",
+]
