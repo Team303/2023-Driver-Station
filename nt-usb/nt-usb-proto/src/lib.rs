@@ -3,6 +3,7 @@ use std::io::{Cursor, Error, ErrorKind, Read, Result, Write};
 pub enum ProxyPacket {
     Text(String),
     Binary(Vec<u8>),
+    Close
 }
 
 impl ProxyPacket {
@@ -10,6 +11,7 @@ impl ProxyPacket {
         match self {
             ProxyPacket::Text(_) => 0,
             ProxyPacket::Binary(_) => 1,
+            ProxyPacket::Close => 2
         }
     }
 
@@ -26,6 +28,7 @@ impl ProxyPacket {
             ProxyPacket::Binary(buf) => {
                 res.write_all(&buf)?;
             }
+            ProxyPacket::Close => {}
         };
 
         Ok(res)
@@ -52,6 +55,8 @@ impl ProxyPacket {
             }
             // Binary Packet
             1 => Ok(ProxyPacket::Binary(bytes)),
+            // Close Packet
+            2 => Ok(ProxyPacket::Close),
             // Unknown packet ID
             _ => Err(Error::new(
                 ErrorKind::Other,
