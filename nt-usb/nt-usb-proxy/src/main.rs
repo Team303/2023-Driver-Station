@@ -3,7 +3,7 @@ use usb_proto::ProxyPacket;
 
 use futures::{future::select, pin_mut};
 use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender};
-use futures_util::{future::try_join_all, StreamExt, TryStreamExt};
+use futures_util::{future::try_join_all, StreamExt};
 
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
@@ -42,7 +42,9 @@ async fn create_ws_client(tx: UnboundedSender<ProxyPacket>, rx: UnboundedReceive
 
     // Forward WS messages over to the USB port
     let ws_to_usb = {
-        read.try_for_each(|message| async {
+        read.for_each(|message| async {
+            let message = message.unwrap();
+
             match message {
                 Message::Text(string) => tx
                     .unbounded_send(ProxyPacket::Text(string.clone()))
@@ -51,8 +53,6 @@ async fn create_ws_client(tx: UnboundedSender<ProxyPacket>, rx: UnboundedReceive
                 Message::Close(_) => tx.unbounded_send(ProxyPacket::Close).unwrap(),
                 _ => eprintln!("Unimplemented message type: {:?}", message),
             };
-
-            Ok(())
         })
     };
 
@@ -64,7 +64,8 @@ async fn create_ws_client(tx: UnboundedSender<ProxyPacket>, rx: UnboundedReceive
     select(ws_to_usb, usb_to_ws).await;
 }
 
-async fn create_usb_master(_tx: UnboundedSender<ProxyPacket>, _rx: UnboundedReceiver<ProxyPacket>) {}
+async fn create_usb_master(_tx: UnboundedSender<ProxyPacket>, _rx: UnboundedReceiver<ProxyPacket>) {
+}
 
 pub trait IntoMessage: Sized {
     fn into_message(self) -> Message;
