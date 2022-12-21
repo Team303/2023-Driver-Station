@@ -9,20 +9,30 @@ use tokio_tungstenite::{connect_async, tungstenite::Message};
 
 #[tokio::main]
 async fn main() {
+    // Create a full duplex channel between the two main async tasks
     let (usb_tx, usb_rx) = futures_channel::mpsc::unbounded();
     let (ws_tx, ws_rx) = futures_channel::mpsc::unbounded();
 
+    // Spawn the async tasks
     let ws_future = tokio::spawn(create_ws_client(ws_tx, usb_rx));
     let usb_future = tokio::spawn(create_usb_master(usb_tx, ws_rx));
 
+    // Run both tasks concurrently
     try_join_all(vec![ws_future, usb_future]).await.unwrap();
 }
 
+/// Creates the WS half of the proxy
+/// 
+/// TODO: 
+///     - Removed hardcoded connection url
+///     - Add better error handling
 async fn create_ws_client(tx: UnboundedSender<ProxyPacket>, rx: UnboundedReceiver<ProxyPacket>) {
     const URL: &str = "ws://127.0.0.1:5810/nt/usb-proxy";
 
+    // Generate a random 16 bytes and base64 them to create our unique connection key
     let ws_key = base64::encode(rand::thread_rng().gen::<[u8; 16]>());
 
+    // Create the raw HTTP request to initiate the WS connection
     let req = http::Request::builder()
         .method("GET")
         .uri(URL)
@@ -35,12 +45,14 @@ async fn create_ws_client(tx: UnboundedSender<ProxyPacket>, rx: UnboundedReceive
         .body(())
         .expect("Could not create http request");
 
+    // Connect to the NT4 WS server
     let (ws_stream, _) = connect_async(req).await.expect("Failed to connect");
     println!("WebSocket handshake has been successfully completed");
 
+    // Split the WS stream into a read stream and a write stream
     let (write, read) = ws_stream.split();
 
-    // Forward WS messages over to the USB port
+    // Forward all WS messages over to the USB port
     let ws_to_usb = {
         read.for_each(|message| async {
             let message = message.unwrap();
@@ -67,6 +79,7 @@ async fn create_ws_client(tx: UnboundedSender<ProxyPacket>, rx: UnboundedReceive
 async fn create_usb_master(_tx: UnboundedSender<ProxyPacket>, _rx: UnboundedReceiver<ProxyPacket>) {
 }
 
+/// Trait to allow ProxyPackets to be converted to tungstenite Messages
 pub trait IntoMessage: Sized {
     fn into_message(self) -> Message;
 }
