@@ -25,6 +25,9 @@ fn main() {
 
             loop {
                 let msg = websocket.read_message().unwrap();
+                
+                println!("Got WS message: {msg:#?}");
+
                 if msg.is_binary() || msg.is_text() {
                     websocket.write_message(msg).unwrap();
                 }
