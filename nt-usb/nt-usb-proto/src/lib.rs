@@ -1,9 +1,11 @@
 use std::io::{Cursor, Error, ErrorKind, Read, Result, Write};
 
+use serialport::SerialPort;
+
 pub enum ProxyPacket {
     Text(String),
     Binary(Vec<u8>),
-    Close
+    Close,
 }
 
 impl ProxyPacket {
@@ -11,7 +13,7 @@ impl ProxyPacket {
         match self {
             ProxyPacket::Text(_) => 0,
             ProxyPacket::Binary(_) => 1,
-            ProxyPacket::Close => 2
+            ProxyPacket::Close => 2,
         }
     }
 
@@ -69,11 +71,11 @@ impl ProxyPacket {
 /// Represents anything that can have USB packets written to it
 ///
 /// For this application, it will be the USB serial connection on the master DS
-pub trait ProtoWriteable {
+pub trait ProtoWriteable: Write {
     fn write_packet(&mut self, packet: ProxyPacket) -> Result<()>;
 }
 
-impl ProtoWriteable for dyn Write {
+impl ProtoWriteable for dyn SerialPort {
     fn write_packet(&mut self, packet: ProxyPacket) -> Result<()> {
         // Assert that u32 takes up 4 bytes (to make sure that encoding and decoding are consistent)
         assert_eq!(u32::BITS / 8, 4);
@@ -97,11 +99,11 @@ impl ProtoWriteable for dyn Write {
 /// Represents anything that can have USB packets read from it
 ///
 /// For this application, it will be the USB serial connection on the slave rpi
-pub trait ProtoReadable {
+pub trait ProtoReadable: Read {
     fn read_packet(&mut self) -> Result<ProxyPacket>;
 }
 
-impl ProtoReadable for dyn Read {
+impl ProtoReadable for dyn SerialPort {
     fn read_packet(&mut self) -> Result<ProxyPacket> {
         // Assert that u32 takes up 4 bytes (to make sure that encoding and decoding are consistent)
         assert_eq!(u32::BITS / 8, 4);
