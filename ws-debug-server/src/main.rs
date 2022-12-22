@@ -13,7 +13,7 @@ fn main() {
                 println!("Received a new ws handshake");
                 println!("The request's path is: {}", req.uri().path());
                 println!("The request's headers are:");
-                
+
                 for (ref header, _value) in req.headers() {
                     println!("* {}", header);
                 }
@@ -25,7 +25,7 @@ fn main() {
 
             loop {
                 let msg = websocket.read_message().unwrap();
-                
+
                 println!("Got WS message: {msg:#?}");
 
                 if msg.is_binary() || msg.is_text() {
