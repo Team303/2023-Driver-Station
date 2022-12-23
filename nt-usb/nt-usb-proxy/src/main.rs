@@ -205,46 +205,15 @@ async fn create_usb_master(
         };
 
         // If no ports were found, try again
-        match ports.len() {
-            0 => {
-                eprintln!(
-                    "{} {}",
-                    Colour::Red.paint("No ports found."),
-                    Colour::White.dimmed().paint("Trying again in 5 seconds...")
-                );
-                tokio::time::sleep(Duration::from_secs(5)).await;
-                continue;
-            }
-            1 => println!("Found 1 port:"),
-            n => println!("Found {} ports:", n),
+        if ports.len() == 0 {
+            eprintln!(
+                "{} {}",
+                Colour::Red.paint("No ports found."),
+                Colour::White.dimmed().paint("Trying again in 5 seconds...")
+            );
+            tokio::time::sleep(Duration::from_secs(5)).await;
+            continue;
         };
-
-        // Print out the port information
-        for p in &ports {
-            println!("  {}", p.port_name);
-            match &p.port_type {
-                SerialPortType::UsbPort(info) => {
-                    println!("    Type: USB");
-                    println!(
-                        "    Manufacturer: {}",
-                        info.manufacturer.as_ref().map_or("", String::as_str)
-                    );
-                    println!(
-                        "    Product: {}",
-                        info.product.as_ref().map_or("", String::as_str)
-                    );
-                }
-                SerialPortType::BluetoothPort => {
-                    println!("    Type: Bluetooth");
-                }
-                SerialPortType::PciPort => {
-                    println!("    Type: PCI");
-                }
-                SerialPortType::Unknown => {
-                    println!("    Type: Unknown");
-                }
-            }
-        }
 
         // Try and get the port that matches the configured value
         let port = ports.iter().find(|p| {
@@ -253,6 +222,38 @@ async fn create_usb_master(
 
         // If the configured port was not found, try again
         let Some(port) = port else {
+ // Print out the port information
+ for p in &ports {
+    match ports.len() {
+        1 => println!("Found 1 port:"),
+        n => println!("Found {} ports:", n),
+    };
+
+    println!("  {}", p.port_name);
+    match &p.port_type {
+        SerialPortType::UsbPort(info) => {
+            println!("    Type: USB");
+            println!(
+                "    Manufacturer: {}",
+                info.manufacturer.as_ref().map_or("", String::as_str)
+            );
+            println!(
+                "    Product: {}",
+                info.product.as_ref().map_or("", String::as_str)
+            );
+        }
+        SerialPortType::BluetoothPort => {
+            println!("    Type: Bluetooth");
+        }
+        SerialPortType::PciPort => {
+            println!("    Type: PCI");
+        }
+        SerialPortType::Unknown => {
+            println!("    Type: Unknown");
+        }
+    }
+}
+
             eprintln!(
                 "{} {}",
                 Colour::Red.paint(format!("Configured port `{}` not found.", config.serial_port)),
@@ -296,7 +297,7 @@ async fn create_usb_master(
         let usb_to_ws = async {
             loop {
                 // If there was a reading error, break and retry the connection
-                let Ok(num_bytes) = reader.bytes_to_read() else { 
+                let Ok(num_bytes) = reader.bytes_to_read() else {
                     eprintln!(
                         "{} {}",
                         Colour::Red.paint("Failed to read bytes from serial."),
