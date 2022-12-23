@@ -112,9 +112,13 @@ async fn create_ws_client(
         // Split the WS stream into a read stream and a write stream
         let (mut write, mut read) = ws_stream.split();
 
+        let tx = tx.clone();
+
         // Forward all WS messages over to the USB port
-        let ws_to_usb = async {
+        let ws_to_usb = tokio::spawn(async move {
             loop {
+                println!("WS Listener");
+
                 // Get the message from the ws stream
                 let message = read.next().await;
 
@@ -145,11 +149,13 @@ async fn create_ws_client(
                     _ => eprintln!("Unimplemented message type: {:?}", message),
                 };
             }
-        };
+        });
 
         // Forward messages from the USB port to the WS connection
         let usb_to_ws = async {
             loop {
+                println!("WS Writer");
+
                 // Get the next packet from the usb client
                 let usb_packet = rx.next().await;
 
@@ -293,9 +299,13 @@ async fn create_usb_master(
             continue;
         };
 
+        let tx = tx.clone();
+
         // Read packets from usb serial and send them to the ws client
-        let usb_to_ws = async {
+        let usb_to_ws = tokio::task::spawn_blocking(move || {
             loop {
+                println!("Serial Listener");
+
                 // If there was a reading error, break and retry the connection
                 let Ok(num_bytes) = reader.bytes_to_read() else {
                     eprintln!(
@@ -325,16 +335,17 @@ async fn create_usb_master(
                     }
                 };
 
+                println!("Packet: {:?}", packet);
+
                 // Send the packet to the ws client to be sent over the network
                 tx.unbounded_send(packet).unwrap();
-
-                // Force tokio to let another task work
-                tokio::time::sleep(Duration::from_millis(1)).await;
             }
-        };
+        });
 
         let ws_to_usb = async {
             loop {
+                println!("Serial Writer");
+
                 // Get the next packet from the ws client
                 let ws_packet = rx.next().await;
 
