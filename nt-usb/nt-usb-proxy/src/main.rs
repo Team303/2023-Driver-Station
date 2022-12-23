@@ -276,6 +276,14 @@ async fn create_usb_master(
                 continue;
             };
 
+        println!(
+            "{}",
+            Colour::Green.paint(format!(
+                "USB Serial connection with port `{}` has been established successfully",
+                config.serial_port
+            ))
+        );
+
         let (Ok(mut reader), Ok(mut writer)) = (port.try_clone(), port.try_clone()) else {
             eprintln!(
                 "{} {}",
