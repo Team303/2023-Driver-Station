@@ -57,7 +57,7 @@ async fn main() -> ! {
     // Run both tasks concurrently
     try_join_all(vec![ws_future, usb_future]).await.unwrap();
 
-    loop {}
+    panic!("unreachable");
 }
 
 /// Creates the WS half of the proxy
