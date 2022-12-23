@@ -14,8 +14,8 @@ fn main() {
                 println!("The request's path is: {}", req.uri().path());
                 println!("The request's headers are:");
 
-                for (ref header, _value) in req.headers() {
-                    println!("* {}", header);
+                for (ref header, value) in req.headers() {
+                    println!("    {}: {:?}", header, value);
                 }
 
                 Ok(response)
