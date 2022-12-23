@@ -4,7 +4,7 @@ use ansi_term::Colour;
 use rand::Rng;
 use serde::Deserialize;
 
-use futures::{SinkExt, future::select, pin_mut};
+use futures::{future::select, pin_mut, SinkExt};
 use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender};
 use futures_util::{future::try_join_all, StreamExt};
 
@@ -12,7 +12,7 @@ use tokio_tungstenite::{connect_async, tungstenite::Message};
 
 use serialport::{available_ports, SerialPortType};
 
-use usb_proto::{ProtoReadable, ProxyPacket, ProtoWriteable};
+use usb_proto::{ProtoReadable, ProtoWriteable, ProxyPacket};
 
 #[derive(Deserialize, Clone)]
 struct ProxyConfig {
@@ -103,7 +103,7 @@ async fn create_ws_client(
                 continue;
             }
         };
-        
+
         println!(
             "{}",
             Colour::Green.paint("WebSocket handshake has been successfully completed")
@@ -124,16 +124,15 @@ async fn create_ws_client(
                 };
 
                 let message = match message {
-                    Ok(m)=> m,
+                    Ok(m) => m,
                     Err(e) => {
                         eprintln!("{:?}", e);
                         eprintln!(
-                        "{} {}",
+                            "{} {}",
                             Colour::Red.paint("Failed read ws message from stream."),
                             Colour::White.dimmed().paint("Trying again in 5 seconds...")
                         );
-                        break
-
+                        break;
                     }
                 };
 
@@ -172,7 +171,6 @@ async fn create_ws_client(
                 };
             }
         };
-
 
         // Run both concurrently
         pin_mut!(ws_to_usb, usb_to_ws);
