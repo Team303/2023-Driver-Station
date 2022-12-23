@@ -323,6 +323,9 @@ async fn create_usb_master(
 
                 // Send the packet to the ws client to be sent over the network
                 tx.unbounded_send(packet).unwrap();
+
+                // Force tokio to let another task work
+                tokio::time::sleep(Duration::from_millis(1)).await;
             }
         };
 
