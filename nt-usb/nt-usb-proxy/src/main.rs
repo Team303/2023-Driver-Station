@@ -264,7 +264,7 @@ async fn create_usb_master(
         };
 
         let Ok(port) = serialport::new(port.port_name.as_str(), config.serial_baud)
-            .timeout(Duration::from_millis(50))
+            .timeout(Duration::from_secs(60 * 60))
             .open() else {
                 eprintln!(
                     "{} {}",
