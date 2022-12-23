@@ -119,11 +119,15 @@ impl ProtoReadable for dyn SerialPort {
         let mut data = vec![0u8; len as usize];
         self.read_exact(&mut data)?;
 
-        // Decode the packet buffer
-        let packet = ProxyPacket::decode(data)?;
+        // Read the `\r\n` at the end of the packet if it is present
+        if let Ok(num) = self.bytes_to_read() {
+            if num == 2 {
+                self.read_exact(&mut [0u8; 2])?;
+            }
+        }
 
-        // Read the `\r\n` at the end of the packet
-        self.read_exact(&mut [0u8; 2])?;
+        // Decode the packet buffer
+        let packet = ProxyPacket::decode(data).expect("could not decode packet");
 
         Ok(packet)
     }
