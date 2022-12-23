@@ -2,6 +2,7 @@ use std::io::{Cursor, Error, ErrorKind, Read, Result, Write};
 
 use serialport::SerialPort;
 
+#[derive(Debug)]
 pub enum ProxyPacket {
     Text(String),
     Binary(Vec<u8>),
@@ -111,14 +112,18 @@ impl ProtoReadable for dyn SerialPort {
         // Read the first four bytes (the data length in LE)
         let mut len = [0u8; 4];
         self.read_exact(&mut len)?;
+
         let len = u32::from_le_bytes(len);
 
         // Read the rest of the packet (`len` bytes)
-        let mut data = vec![0; len as usize];
+        let mut data = vec![0u8; len as usize];
         self.read_exact(&mut data)?;
 
         // Decode the packet buffer
         let packet = ProxyPacket::decode(data)?;
+
+        // Read the `\r\n` at the end of the packet
+        self.read_exact(&mut [0u8; 2])?;
 
         Ok(packet)
     }
