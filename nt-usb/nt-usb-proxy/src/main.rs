@@ -4,7 +4,7 @@ use ansi_term::Colour;
 use rand::Rng;
 use serde::Deserialize;
 
-use futures::{future::select, pin_mut};
+use futures::{SinkExt, future::select, pin_mut};
 use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender};
 use futures_util::{future::try_join_all, StreamExt};
 
@@ -68,55 +68,119 @@ async fn main() -> ! {
 async fn create_ws_client(
     config: ProxyConfig,
     tx: UnboundedSender<ProxyPacket>,
-    rx: UnboundedReceiver<ProxyPacket>,
+    mut rx: UnboundedReceiver<ProxyPacket>,
 ) {
     let url = &config.url;
 
-    // Generate a random 16 bytes and base64 them to create our unique connection key
-    let ws_key = base64::encode(rand::thread_rng().gen::<[u8; 16]>());
+    loop {
+        // Generate a random 16 bytes and base64 them to create our unique connection key
+        let ws_key = base64::encode(rand::thread_rng().gen::<[u8; 16]>());
 
-    // Create the raw HTTP request to initiate the WS connection
-    let req = http::Request::builder()
-        .method("GET")
-        .uri(url)
-        .header("Sec-WebSocket-Key", ws_key)
-        .header("Sec-WebSocket-Protocol", "networktables.first.wpi.edu")
-        .header("Sec-WebSocket-Version", "13")
-        .header("Connection", "Upgrade")
-        .header("Upgrade", "websocket")
-        .header("Host", url)
-        .body(())
-        .expect("Could not create http request");
+        // Create the raw HTTP request to initiate the WS connection
+        let req = http::Request::builder()
+            .method("GET")
+            .uri(url)
+            .header("Sec-WebSocket-Key", ws_key)
+            .header("Sec-WebSocket-Protocol", "networktables.first.wpi.edu")
+            .header("Sec-WebSocket-Version", "13")
+            .header("Connection", "Upgrade")
+            .header("Upgrade", "websocket")
+            .header("Host", url)
+            .body(())
+            .expect("Could not create http request");
 
-    // Connect to the NT4 WS server
-    let (ws_stream, _) = connect_async(req).await.expect("Failed to connect");
-    println!("WebSocket handshake has been successfully completed");
+        // Connect to the NT4 WS server
+        let (ws_stream, _) = match connect_async(req).await {
+            Ok(ws) => ws,
+            Err(e) => {
+                eprintln!("{:?}", e);
+                eprintln!(
+                    "{} {}",
+                    Colour::Red.paint("Error connectiing to NT4 WS server."),
+                    Colour::Black.paint("Trying again in 5 seconds...")
+                );
+                tokio::time::sleep(Duration::from_secs(5)).await;
+                continue;
+            }
+        };
+        
+        println!(
+            "{}",
+            Colour::Green.paint("WebSocket handshake has been successfully completed")
+        );
 
-    // Split the WS stream into a read stream and a write stream
-    let (write, read) = ws_stream.split();
+        // Split the WS stream into a read stream and a write stream
+        let (mut write, mut read) = ws_stream.split();
 
-    // Forward all WS messages over to the USB port
-    let ws_to_usb = {
-        read.for_each(|message| async {
-            let message = message.unwrap();
+        // Forward all WS messages over to the USB port
+        let ws_to_usb = async {
+            loop {
+                // Get the message from the ws stream
+                let message = read.next().await;
 
-            match message {
-                Message::Text(string) => tx
-                    .unbounded_send(ProxyPacket::Text(string.clone()))
-                    .unwrap(),
-                Message::Binary(data) => tx.unbounded_send(ProxyPacket::Binary(data)).unwrap(),
-                Message::Close(_) => tx.unbounded_send(ProxyPacket::Close).unwrap(),
-                _ => eprintln!("Unimplemented message type: {:?}", message),
-            };
-        })
-    };
+                // If no message is available, keep looping until one is
+                let Some(message) = message else {
+                    continue;
+                };
 
-    // Forward messages from the USB port to the WS connection
-    let usb_to_ws = rx.map(|p| p.into_message()).map(Ok).forward(write);
+                let message = match message {
+                    Ok(m)=> m,
+                    Err(e) => {
+                        eprintln!("{:?}", e);
+                        eprintln!(
+                        "{} {}",
+                            Colour::Red.paint("Failed read ws message from stream."),
+                            Colour::White.dimmed().paint("Trying again in 5 seconds...")
+                        );
+                        break
 
-    // Run both concurrently
-    pin_mut!(ws_to_usb, usb_to_ws);
-    select(ws_to_usb, usb_to_ws).await;
+                    }
+                };
+
+                match message {
+                    Message::Text(string) => tx
+                        .unbounded_send(ProxyPacket::Text(string.clone()))
+                        .unwrap(),
+                    Message::Binary(data) => tx.unbounded_send(ProxyPacket::Binary(data)).unwrap(),
+                    Message::Close(_) => tx.unbounded_send(ProxyPacket::Close).unwrap(),
+                    _ => eprintln!("Unimplemented message type: {:?}", message),
+                };
+            }
+        };
+
+        // Forward messages from the USB port to the WS connection
+        let usb_to_ws = async {
+            loop {
+                // Get the next packet from the usb client
+                let usb_packet = rx.next().await;
+
+                // If no packet is available, keep looping until one is
+                let Some(packet) = usb_packet else {
+                    continue;
+                };
+
+                let ws_message = packet.into_message();
+
+                // Write the packet to the stream
+                let Ok(_) = write.send(ws_message).await else {
+                    eprintln!(
+                        "{} {}",
+                        Colour::Red.paint("Failed to send ws message over write stream."),
+                        Colour::White.dimmed().paint("Trying again in 5 seconds...")
+                    );
+                    break
+                };
+            }
+        };
+
+
+        // Run both concurrently
+        pin_mut!(ws_to_usb, usb_to_ws);
+        select(ws_to_usb, usb_to_ws).await;
+
+        // Wait the 5 seconds between retry attempts for futures
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
 }
 
 /// This creates a loop which never ends. It
