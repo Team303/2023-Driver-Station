@@ -312,13 +312,17 @@ async fn create_usb_master(
                 }
 
                 // Read a packet from the stream
-                let Ok(packet) = reader.read_packet() else {
-                    eprintln!(
-                        "{} {}",
-                        Colour::Red.paint("Failed to read and decode packet from stream."),
-                        Colour::White.dimmed().paint("Trying again in 5 seconds...")
-                    );
-                    break
+                let packet = match reader.read_packet() {
+                    Ok(p) => p,
+                    Err(e) => {
+                        eprintln!("{:?}", e);
+                        eprintln!(
+                            "{} {}",
+                            Colour::Red.paint("Failed to read and decode packet from stream."),
+                            Colour::White.dimmed().paint("Trying again in 5 seconds...")
+                        );
+                        break;
+                    }
                 };
 
                 // Send the packet to the ws client to be sent over the network
