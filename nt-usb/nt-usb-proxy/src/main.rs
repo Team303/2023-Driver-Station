@@ -222,37 +222,37 @@ async fn create_usb_master(
 
         // If the configured port was not found, try again
         let Some(port) = port else {
- // Print out the port information
- for p in &ports {
-    match ports.len() {
-        1 => println!("Found 1 port:"),
-        n => println!("Found {} ports:", n),
-    };
+            // Print out the port information
+            for p in &ports {
+                match ports.len() {
+                    1 => println!("Found 1 port:"),
+                    n => println!("Found {} ports:", n),
+                };
 
-    println!("  {}", p.port_name);
-    match &p.port_type {
-        SerialPortType::UsbPort(info) => {
-            println!("    Type: USB");
-            println!(
-                "    Manufacturer: {}",
-                info.manufacturer.as_ref().map_or("", String::as_str)
-            );
-            println!(
-                "    Product: {}",
-                info.product.as_ref().map_or("", String::as_str)
-            );
-        }
-        SerialPortType::BluetoothPort => {
-            println!("    Type: Bluetooth");
-        }
-        SerialPortType::PciPort => {
-            println!("    Type: PCI");
-        }
-        SerialPortType::Unknown => {
-            println!("    Type: Unknown");
-        }
-    }
-}
+                println!("  {}", p.port_name);
+                match &p.port_type {
+                    SerialPortType::UsbPort(info) => {
+                        println!("    Type: USB");
+                        println!(
+                            "    Manufacturer: {}",
+                            info.manufacturer.as_ref().map_or("", String::as_str)
+                        );
+                        println!(
+                            "    Product: {}",
+                            info.product.as_ref().map_or("", String::as_str)
+                        );
+                    }
+                    SerialPortType::BluetoothPort => {
+                        println!("    Type: Bluetooth");
+                    }
+                    SerialPortType::PciPort => {
+                        println!("    Type: PCI");
+                    }
+                    SerialPortType::Unknown => {
+                        println!("    Type: Unknown");
+                    }
+                }
+            }
 
             eprintln!(
                 "{} {}",
