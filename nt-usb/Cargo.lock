@@ -616,7 +616,14 @@ dependencies = [
 name = "nt-usb-client"
 version = "0.1.0"
 dependencies = [
+ "ansi_term",
+ "futures",
+ "futures-channel",
+ "futures-util",
+ "nt-usb-proto",
  "proto",
+ "serialport",
+ "tokio",
 ]
 
 [[package]]
